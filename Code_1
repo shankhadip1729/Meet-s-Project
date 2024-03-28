@@ -1,0 +1,98 @@
+import pandas as pd
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from scipy import signal
+from scipy.signal import butter, lfilter, freqz
+import math
+import pylab
+import scipy
+
+
+data = pd.read_excel('samplefile.xlsx')
+df = pd.DataFrame(data)
+
+
+ 
+time = df.iloc[:,0]
+siga = df.iloc[:,1]
+siga= siga/100;
+background = df.iloc[:,2]
+background = background/100
+sig_actual = siga - background
+fs = 1024
+cutoff = 13
+order =  30
+beta = 0
+def butter_lowpass(cutoff, fs, order=30):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    return b, a
+
+def butter_lowpass_filter(data, cutoff, fs, order =30):
+    b, a = butter_lowpass(cutoff, fs, order=order)
+    y = lfilter(b, a, data, axis=0)
+    return y
+
+sig_actual_filtered = butter_lowpass_filter(sig_actual,cutoff=10,fs = 1024,order =30)
+sig_filtered = butter_lowpass_filter(siga,cutoff =10,fs =1024,order=30)
+back_filtered = butter_lowpass_filter(background,cutoff=10,fs =1024,order =30)
+
+#Decimation of ChX -
+#Stage 1 decimation of ChX
+sodChXf = signal.decimate(sig_filtered,4)
+#Stage 2 decimation of ChX -
+stdChXf = signal.decimate(sodChXf,2)
+#Stage 3 decimation of ChX -
+sthdChXf = signal.decimate(stdChXf,4)
+
+#Decimation of ChY -
+#Stage 1
+sodChYf = signal.decimate(back_filtered,4)
+#Stage 2
+stdChYf = signal.decimate(sodChYf,2)
+#Stage 3
+sthdChYf = signal.decimate(stdChYf,4)
+
+
+#Time decimation -
+time_deci1 = signal.decimate(time,4)
+time_deci2 = signal.decimate(time_deci1,2)
+time_deci3 = signal.decimate(time_deci2,4)
+
+
+
+#PSD for ChX filtered and decimated -
+(fChX1,sodChXfPSD) = scipy.signal.periodogram(sodChXf,fs=1024, window ='hanning')
+(fChX2,stdChXfPSD) = scipy.signal.periodogram(stdChXf,fs=1024,window ='hanning')
+(fChX3,sthChXfPSD) = scipy.signal.periodogram(sthdChXf, fs=1024,window ='hanning')
+
+
+#PSD for ChY filtered and decimated -
+(fChY1,sodChYfPSD) = scipy.signal.periodogram(sodChYf, fs=1024,window ='hanning')
+(fChY2,stdChYfPSD) = scipy.signal.periodogram(stdChYf, fs=1024,window ='hanning')
+(fChY3,sthdChYfPSD) = scipy.signal.periodogram(sthdChYf, fs =1024,window ='hanning')
+
+#Plotting the individual level decimation ChX PSD -
+
+#Stage1 PSD for ChX decimation stage 1 - decimation by a factor of 4
+# fig,axs = plt.subplots(3,2,figsize =(10,6))
+
+# axs[0,0].plot(fChX1,sodChXfPSD, color ='green')
+# plt.grid(True)
+# axs[0,1].plot(fChY1,sodChYfPSD, color ='blue')
+# plt.grid(True)
+# axs[1,0].plot(fChX2,stdChXfPSD, color ='red')
+# plt.grid(True)
+# axs[1,1].plot(fChY2,stdChYfPSD, color ='yellow')
+# plt.grid(True)
+# axs[2,0].plot(fChX3,sthChXfPSD, color ='black')
+# plt.grid(True)
+# axs[2,1].plot(fChY3,sthdChYfPSD, color ='magenta')
+
+
+# plt.tight_layout()
+# plt.grid(True)
+# plt.show()
+
